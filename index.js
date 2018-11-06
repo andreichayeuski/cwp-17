@@ -5,6 +5,8 @@ const uuid = require('uuid/v4');
 const path = require('path');
 const Promise = require('bluebird');
 const app = express();
+const fs = require('fs');
+
 app.use('/uploads', express.static('uploads'));
 
 const upload = multer({
@@ -45,7 +47,6 @@ app.get('/pdf', upload.single('file'), (req, res) => {
 
 app.post('/pdf', pdfUpload.array('files', 3), (req, res) => {
 	if (req.files.length < 1 || req.files.map((elem) => elem.ext !== '.pdf').indexOf(true) > -1) {
-		console.log(req);
 		res.json({
 			error: 501,
 			message: 'file upload error or wrong extension'
@@ -54,19 +55,14 @@ app.post('/pdf', pdfUpload.array('files', 3), (req, res) => {
 	else {
 		console.log(req);
 		res.json({
-			files: req.files.map((file) => file = file.filename)
+			files: req.files.map((file) => file.filename)
 		});
 	}
 });
 
 //images
 const imageUpload = multer({
-	storage: multer.diskStorage({
-		destination: './uploads/images/',
-		filename: (req, file, cb) => {
-			cb(null, `${uuid()}-master${file.ext = path.extname(file.originalname)}`);
-		}
-	}),
+	storage: multer.memoryStorage(),
 	fileFilter: function fileFilter(req, file, cb) {
 		file.mimetype.split('/')[0] === 'image' ? cb(null, true) : cb(null, false);
 	}
@@ -77,23 +73,24 @@ app.get('/images', (req, res) => {
 });
 
 app.post('/images', imageUpload.single('image'), async (req, res) => {
-	console.log(req);
 	let ext = ['.jpg', '.png'];
 	if (req.file === undefined)
 	{
 		res.json({error: 500, message: 'file upload error'});
 	}
-	else if (ext.indexOf(req.file.ext) < 0)
+	else if (ext.indexOf(path.extname(req.file.originalname)) < 0)
 	{
 		res.json({error: 501, message: 'wrong extension'});
 	}
 	else
 	{
-		let name = req.file.filename;
-		let filenames = [ `${name}master${ext}`, `${name}preview${ext}`, `${name}thumbnail${ext}` ];
+		let extension = path.extname(req.file.originalname);
+		let filename = `${uuid()}`;
+		let filenames = [ `${filename}-master${extension}`, `${filename}-preview${extension}`, `${filename}-thumbnail${extension}` ];
+		fs.writeFileSync(`./uploads/images/${filenames[0]}`, req.file.buffer, 'binary');
 		Promise.all([
-			sharp(`./uploads/images/${req.file.filename}`).resize(800, 600).toFile(`./uploads/images/${filenames[1]}`),
-			sharp(`./uploads/images/${req.file.filename}`).resize(300, 180).toFile(`./uploads/images/${filenames[2]}`)
+			sharp(`./uploads/images/${filenames[0]}`).resize(800, 600).toFile(`./uploads/images/${filenames[1]}`),
+			sharp(`./uploads/images/${filenames[0]}`).resize(300, 180).toFile(`./uploads/images/${filenames[2]}`)
 		]).then(() => {
 			res.json(filenames);
 		}).catch((err) => {
