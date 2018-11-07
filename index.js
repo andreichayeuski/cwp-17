@@ -87,10 +87,10 @@ app.post('/images', imageUpload.single('image'), async (req, res) => {
 		let extension = path.extname(req.file.originalname);
 		let filename = `${uuid()}`;
 		let filenames = [ `${filename}-master${extension}`, `${filename}-preview${extension}`, `${filename}-thumbnail${extension}` ];
-		fs.writeFileSync(`./uploads/images/${filenames[0]}`, req.file.buffer, 'binary');
 		Promise.all([
-			sharp(`./uploads/images/${filenames[0]}`).resize(800, 600).toFile(`./uploads/images/${filenames[1]}`),
-			sharp(`./uploads/images/${filenames[0]}`).resize(300, 180).toFile(`./uploads/images/${filenames[2]}`)
+			fs.writeFileSync(`./uploads/images/${filenames[0]}`, req.file.buffer, 'binary'),
+			sharp(req.file.buffer).resize(800, 600).toFile(`./uploads/images/${filenames[1]}`),
+			sharp(req.file.buffer).resize(300, 180).toFile(`./uploads/images/${filenames[2]}`)
 		]).then(() => {
 			res.json(filenames);
 		}).catch((err) => {
